@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>RHCSA 10 Lab - Edição 2026</title>
+    <style>
+        body { margin: 0; display: flex; height: 100vh; background: #1e1e1e; font-family: 'Segoe UI', sans-serif; color: white; }
+        #sidebar { width: 300px; background: #2d2d2d; border-right: 2px solid #444; overflow-y: auto; padding: 10px; }
+        #instructions { width: 350px; padding: 20px; background: #252525; border-right: 2px solid #444; overflow-y: auto; }
+        #terminal-container { flex-grow: 1; background: #000; }
+        iframe { width: 100%; height: 100%; border: none; }
+        .task-item { padding: 10px; margin-bottom: 5px; background: #3d3d3d; cursor: pointer; border-radius: 4px; font-size: 14px; }
+        .task-item:hover { background: #505050; }
+        .btn-check { background: #2ecc71; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 20px; }
+        #status { margin-top: 15px; padding: 10px; border-radius: 5px; display: none; font-size: 14px; }
+        h2 { color: #e74c3c; font-size: 18px; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        code { background: #000; color: #00ff00; padding: 2px 4px; }
+        .btn-hint { background: #f39c12; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; }
+    .btn-hint:hover { background: #d35400; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2>Laboratórios RHCSA 10</h2>
+    <div id="task-list"></div>
+</div>
+
+<div id="instructions">
+    <h3 id="task-title">Selecione uma tarefa</h3>
+    <div id="task-desc">Escolha um dos laboratórios à esquerda para começar seus estudos para a certificação EX200.</div>
+    <button id="btn-verify" class="btn-check" style="display:none;" onclick="verifyTask()">Verificar Resposta</button>
+    <button id="btn-hint" class="btn-hint" style="display:none;" onclick="getAiHint()">💡 Dica da IA</button>
+    <div id="status"></div>
+</div>
+
+<div id="terminal-container">
+    <iframe src="http://localhost:7681"></iframe>
+</div>
+
+<script>
+    let currentTaskId = null;
+    const tasks = {
+        1: { t: "01. Rede e Hostname", d: "Configure o hostname <code>node1.mydomain.com</code> e o IP <code>192.168.99.11</code> no node1." },
+        2: { t: "02. Repositório YUM", d: "Configure um repositório em <code>/etc/yum.repos.d/local.repo</code> apontando para a base de pacotes do sistema." },
+        3: { t: "03. SELinux Port 82", d: "Configure o serviço Apache para escutar na porta <code>82</code> e ajuste o SELinux." },
+        4: { t: "04. Usuários e Grupos", d: "Crie o usuário <code>estudante</code> pertencente ao grupo secundário <code>docentes</code>." },
+        5: { t: "05. Diretório Compartilhado", d: "Crie <code>/home/shared</code>. Grupo dono: <code>docentes</code>. Permissões: <code>2770</code> (SetGID)." },
+        6: { t: "06. Root Password Reset", d: "<b>Desafio:</b> Reinicie o node1 e resete a senha de root através do console (intervenção no GRUB)." },
+        7: { t: "07. LVM", d: "Crie um Logical Volume chamado <code>lv_dados</code> de 500MB no Volume Group <code>vg_web</code>." },
+        8: { t: "08. Container Building", d: "Como usuário <code>vagrant</code>, crie um container chamado <code>meu_web</code> usando a imagem <code>nginx</code>." },
+        9: { t: "09. Serviço Container", d: "Configure o container <code>meu_web</code> para iniciar automaticamente via <code>systemd</code> do usuário." }
+    };
+
+    const taskList = document.getElementById('task-list');
+    Object.keys(tasks).forEach(id => {
+        let div = document.createElement('div');
+        div.className = 'task-item';
+        div.innerText = tasks[id].t;
+        div.onclick = () => loadTask(id);
+        taskList.appendChild(div);
+    });
+
+    function loadTask(id) {
+        currentTaskId = id;
+        document.getElementById('task-title').innerText = tasks[id].t;
+        document.getElementById('task-desc').innerHTML = tasks[id].d;
+        document.getElementById('btn-verify').style.display = "block";
+        document.getElementById('btn-hint').style.display = "block";
+        document.getElementById('status').style.display = "none";
+    }
+
+    async function getAiHint() {
+        const statusDiv = document.getElementById('status');
+        statusDiv.style.display = "block";
+        statusDiv.style.background = "#34495e";
+        statusDiv.innerHTML = "🔍 Buscando dica da IA...";
+
+        try {
+            const response = await fetch(`http://localhost:5005/hint/${currentTaskId}`);
+            const data = await response.json();
+            statusDiv.style.background = "#2980b9";
+            // Adicionado replace para formatar quebras de linha da IA
+            statusDiv.innerHTML = `<b>Dica:</b><br>${data.hint.replace(/\n/g, '<br>')}`;
+        } catch (error) {
+            statusDiv.style.background = "#f39c12";
+            statusDiv.innerHTML = "⚠️ Erro: Servidor de IA (Python) offline.";
+        }
+    }
+
+    async function verifyTask() {
+        const statusDiv = document.getElementById('status');
+        statusDiv.style.display = "block";
+        statusDiv.style.background = "#34495e";
+        statusDiv.innerHTML = "⏳ Verificando no node1...";
+
+        try {
+            const response = await fetch(`http://localhost:5005/check/${currentTaskId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                statusDiv.style.background = "#27ae60";
+                statusDiv.innerHTML = "✅ <b>Correto!</b> Lab concluído com sucesso.";
+            } else {
+                statusDiv.style.background = "#c0392b";
+                statusDiv.innerHTML = `❌ <b>Errado:</b> Verifique sua configuração no node1.`;
+            }
+        } catch (error) {
+            statusDiv.style.background = "#f39c12";
+            statusDiv.innerHTML = "⚠️ <b>Erro:</b> O servidor Python (app.py) não responde na porta 5005.";
+        }
+    }
+</script>
+
+</body>
+</html>

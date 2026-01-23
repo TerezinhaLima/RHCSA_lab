@@ -1,0 +1,56 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+$hostsfile = <<-SCRIPT
+echo "192.168.99.10   ansible.mydomain.com   ansible" >> /etc/hosts
+echo "192.168.99.11   node1.mydomain.com     node1" >> /etc/hosts
+echo "192.168.99.12   node2.mydomain.com     node2" >> /etc/hosts
+SCRIPT
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "generic/rocky9"
+  
+  config.vm.provider "virtualbox" do |vb|
+    vb.gui = false # Deixe false aqui para ser o padrão global
+    vb.memory = "2048"
+    vb.cpus = "2"
+  end
+
+ config.vm.define :ansible do |ansible|
+    ansible.vm.hostname = "ansible.mydomain.com" # Adicione o hostname
+    ansible.vm.network :private_network, ip: "192.168.99.10" # ADICIONE ESTA LINHA
+    
+    ansible.vm.provider "virtualbox" do |vb|
+      vb.memory = "2048"
+      vb.cpus = "2"
+    end
+    ansible.vm.network "forwarded_port", guest: 7681, host: 7681, auto_correct: true # Porta para Ansible AWX
+    ansible.vm.network "forwarded_port", guest: 82, host: 8082, auto_correct: true
+    ansible.vm.provision "shell", inline: $hostsfile # Adicione o provisionamento de hosts aqui também
+  end
+
+  # MÁQUINA NODE1 (COM INTERFACE GRÁFICA)
+  config.vm.define :node1 do |node1|
+    node1.vm.hostname = "node1.mydomain.com"
+    node1.vm.network :private_network, ip: "192.168.99.11"
+    
+    node1.vm.provider "virtualbox" do |vb|
+      vb.gui = true           # Habilita a janela da interface
+      vb.memory = "4096"      # Aumentado para 4GB para suportar a GUI
+    end
+
+    node1.vm.provision "shell", inline: $hostsfile
+    # Instalação dos pacotes gráficos
+    node1.vm.provision "shell", inline: <<-GUI
+      sudo dnf -y groupinstall "Server with GUI"
+      sudo systemctl set-default graphical.target
+    GUI
+  end
+
+  # MÁQUINA NODE2 (Apenas terminal)
+  config.vm.define :node2 do |node2|
+    node2.vm.hostname = "node2.mydomain.com"
+    node2.vm.network :private_network, ip: "192.168.99.12"
+    node2.vm.provision "shell", inline: $hostsfile
+  end
+end
