@@ -40,10 +40,53 @@ Este repositório contém um ambiente automatizado para estudos do exame RHCSA 1
     ```
     *A partir do acesso, você pode praticar configurações em `/etc/ssh/sshd_config`, alterar senhas de root e outras tarefas do exame.*
 
+    ## 🌐 Acesso Remoto via Web (ttyd)
+
+Para acessar o terminal das suas VMs via navegador na porta **7681**, adicione este script de provisionamento ao seu `Vagrantfile` ou execute-o dentro das máquinas:
+
+### Instalação e Liberação de Porta
+Este comando instala o repositório EPEL, o pacote `ttyd` e configura o Firewall do Rocky 9:
+
+```bash
+# Instalar dependências e ttyd
+cd c:/RHCSA_lab
+vagrant ssh anssible
+sudo dnf install -y epel-release
+sudo dnf install -y ttyd
+
+# Abrir a porta 7681 no FirewallD
+sudo firewall-cmd --permanent --add-port=7681/tcp
+sudo firewall-cmd --reload
+
+# Iniciar o ttyd (exemplo de execução em background na porta 7681)
+# Substitua 'bash' pelo shell desejado
+ttyd -p 7681 bash &
+### 🐍 Dependências de Python (Ambiente de Automação)
+
+Como este laboratório foca em **Ansible** para o exame RHCSA 10, os seguintes pacotes Python são instalados automaticamente ou necessários para o funcionamento dos nós:
+
+*   **Python 3.9+**: Versão padrão do Rocky 9 (utilizada para rodar o core do Ansible).
+*   **python3-pip**: Gerenciador de pacotes para extensões adicionais.
+*   **python3-libxml2 / python3-libxslt**: Dependências comuns para manipulação de arquivos XML/HTML em automações.
+*   **Selinux Python Bindings**: Necessário para que o Ansible gerencie permissões de SELinux nas VMs.
+
+#### Script de instalação rápida das dependências (Provisionamento):
+Caso queira garantir que todas as dependências de Python estejam presentes para o Ansible, utilize este comando:
+
+```bash
+# Instalando dependências de Python no nó Ansible e nos Nodes
+sudo dnf install -y python3 python3-pip python3-devel
+
+# Dependência específica para o Ansible gerenciar o SELinux (Essencial para o exame)
+sudo dnf install -y python3-policycoreutils
+
+
 ## 🛠️ Comandos de Gerenciamento
 
 | Ação | Comando |
 | :--- | :--- |
+| **entra no diretorio**  | `cd c:/RHCSA_lab` |
+| **roda python** | `python app.py` |
 | **Parar** todas as VMs | `vagrant halt` |
 | **Reiniciar** todas as VMs | `vagrant reload` |
 | **Excluir (Destruir)** todas as VMs | `vagrant destroy` |
