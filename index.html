@@ -2,34 +2,63 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>RHCSA 10 Lab - Edição 2026</title>
+    <title>RHCSA V10 Lab - Exame Oficial</title>
     <style>
         body { margin: 0; display: flex; height: 100vh; background: #1e1e1e; font-family: 'Segoe UI', sans-serif; color: white; }
-        #sidebar { width: 300px; background: #2d2d2d; border-right: 2px solid #444; overflow-y: auto; padding: 10px; }
-        #instructions { width: 350px; padding: 20px; background: #252525; border-right: 2px solid #444; overflow-y: auto; }
+        #sidebar { width: 350px; background: #2d2d2d; border-right: 2px solid #444; overflow-y: auto; padding: 10px; }
+        #instructions { width: 400px; padding: 20px; background: #252525; border-right: 2px solid #444; overflow-y: auto; }
         #terminal-container { flex-grow: 1; background: #000; }
         iframe { width: 100%; height: 100%; border: none; }
-        .task-item { padding: 10px; margin-bottom: 5px; background: #3d3d3d; cursor: pointer; border-radius: 4px; font-size: 14px; }
+        .task-item { padding: 12px; margin-bottom: 5px; background: #3d3d3d; cursor: pointer; border-radius: 4px; font-size: 14px; border-left: 3px solid transparent; }
+        .task-item.node1 { border-left-color: #3498db; }
+        .task-item.node2 { border-left-color: #e74c3c; }
         .task-item:hover { background: #505050; }
         .btn-check { background: #2ecc71; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 20px; }
-        #status { margin-top: 15px; padding: 10px; border-radius: 5px; display: none; font-size: 14px; }
-        h2 { color: #e74c3c; font-size: 18px; border-bottom: 1px solid #444; padding-bottom: 10px; }
-        code { background: #000; color: #00ff00; padding: 2px 4px; }
+        .btn-check:hover { background: #27ae60; }
         .btn-hint { background: #f39c12; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; }
-    .btn-hint:hover { background: #d35400; }
+        .btn-hint:hover { background: #e67e22; }
+        #status { margin-top: 15px; padding: 15px; border-radius: 5px; display: none; font-size: 14px; line-height: 1.5; }
+        h2 { color: #e74c3c; font-size: 18px; border-bottom: 1px solid #444; padding-bottom: 10px; margin-top: 0; }
+        h3 { color: #3498db; margin-bottom: 10px; }
+        code { background: #000; color: #00ff00; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; }
+        pre { background: #1e1e1e; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        .node-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-left: 8px; }
+        .node1-badge { background: #3498db; color: white; }
+        .node2-badge { background: #e74c3c; color: white; }
+        .progress-container { margin-top: 20px; }
+        .progress-bar { height: 10px; background: #444; border-radius: 5px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #2ecc71; width: 0%; transition: width 0.3s; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h2>Laboratórios RHCSA 10</h2>
+    <h2>📋 RHCSA V10 - EX200</h2>
+    <div style="margin-bottom: 15px; padding: 10px; background: #333; border-radius: 5px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span>Progresso:</span>
+            <span id="progress-text">0/20</span>
+        </div>
+        <div class="progress-bar">
+            <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
+        </div>
+    </div>
     <div id="task-list"></div>
 </div>
 
 <div id="instructions">
     <h3 id="task-title">Selecione uma tarefa</h3>
-    <div id="task-desc">Escolha um dos laboratórios à esquerda para começar seus estudos para a certificação EX200.</div>
-    <button id="btn-verify" class="btn-check" style="display:none;" onclick="verifyTask()">Verificar Resposta</button>
+    <div id="task-desc" style="margin-bottom: 20px; background: #333; padding: 15px; border-radius: 5px;">
+        Escolha um dos laboratórios à esquerda para começar seus estudos para a certificação EX200.
+    </div>
+    
+    <div id="task-details" style="display: none;">
+        <div style="background: #2c3e50; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+            <strong>Node:</strong> <span id="task-node"></span>
+        </div>
+    </div>
+    
+    <button id="btn-verify" class="btn-check" style="display:none;" onclick="verifyTask()">✅ Verificar Resposta</button>
     <button id="btn-hint" class="btn-hint" style="display:none;" onclick="getAiHint()">💡 Dica da IA</button>
     <div id="status"></div>
 </div>
@@ -40,34 +69,64 @@
 
 <script>
     let currentTaskId = null;
+    let completedTasks = new Set(JSON.parse(localStorage.getItem('completedTasks') || '[]'));
+    
     const tasks = {
-        1: { t: "01. Rede e Hostname", d: "Configure o hostname <code>node1.mydomain.com</code> e o IP <code>192.168.99.11</code> no node1." },
-        2: { t: "02. Repositório YUM", d: "Configure um repositório em <code>/etc/yum.repos.d/local.repo</code> apontando para a base de pacotes do sistema." },
-        3: { t: "03. SELinux Port 82", d: "Configure o serviço Apache para escutar na porta <code>82</code> e ajuste o SELinux." },
-        4: { t: "04. Usuários e Grupos", d: "Crie o usuário <code>estudante</code> pertencente ao grupo secundário <code>docentes</code>." },
-        5: { t: "05. Diretório Compartilhado", d: "Crie <code>/home/shared</code>. Grupo dono: <code>docentes</code>. Permissões: <code>2770</code> (SetGID)." },
-        6: { t: "06. Root Password Reset", d: "<b>Desafio:</b> Reinicie o node1 e resete a senha de root através do console (intervenção no GRUB)." },
-        7: { t: "07. LVM", d: "Crie um Logical Volume chamado <code>lv_dados</code> de 500MB no Volume Group <code>vg_web</code>." },
-        8: { t: "08. Container Building", d: "Como usuário <code>vagrant</code>, crie um container chamado <code>meu_web</code> usando a imagem <code>nginx</code>." },
-        9: { t: "09. Serviço Container", d: "Configure o container <code>meu_web</code> para iniciar automaticamente via <code>systemd</code> do usuário." }
+        // Node 1 (1-13)
+        1: { t: "01. Rede e Hostname", n: 1, d: "Configure a rede e o hostname:<br><br>IP Address: <code>10.129.203.120/24</code><br>Gateway: <code>10.129.203.112</code><br>DNS: <code>10.129.203.112</code><br>Domain: <code>lab.example.com</code><br>Hostname: <code>node1.lab.example.com</code>" },
+        2: { t: "02. Repositórios DNF", n: 1, d: "Configure os repositórios em <code>/etc/yum.repos.d/exam.repo</code>:<br><br><pre>[BaseOS]\nname=BaseOS\nbaseurl=file:///mnt/BaseOS\ngpgcheck=0\nenabled=1\n\n[AppStream]\nname=AppStream\nbaseurl=file:///mnt/AppStream\ngpgcheck=0\nenabled=1</pre>" },
+        3: { t: "03. SELinux e Apache", n: 1, d: "Corrija o SELinux para que o Apache:<br><br>A) Sirva arquivos de <code>/var/www/html</code><br>B) Execute na porta <code>82</code><br>C) Seja acessível via <code>http://10.129.203.120:82</code>" },
+        4: { t: "04. Usuários e Grupos", n: 1, d: "Crie:<br><br>• Grupo <code>sysmgrs</code><br>• Usuário <code>john</code> (membro de sysmgrs)<br>• Usuária <code>emma</code> (membro de sysmgrs)<br>• Usuário <code>michael</code> (sem shell)<br><br>Senha para todos: <code>compedel@314</code>" },
+        5: { t: "05. Autofs NFS", n: 1, d: "Configure autofs para montar:<br><br><code>serverb.lab.example.com:/rhome/remoteuser18</code><br><br>em <code>/rhome/remoteuser18</code> (gravável)" },
+        6: { t: "06. Cron Job", n: 1, d: "Configure cron para usuário <code>john</code>:<br><br>Executar <code>/bin/echo 'hello world'</code> diariamente às 12:30" },
+        7: { t: "07. Cliente NTP", n: 1, d: "Configure o sistema como cliente NTP de <code>classroom.example.com</code>" },
+        8: { t: "08. Busca de Arquivos", n: 1, d: "Localize todos os arquivos pertencentes a <code>emma</code> e copie para <code>/root/find.user</code>" },
+        9: { t: "09. Busca de String", n: 1, d: "Encontre todas as ocorrências de <code>ich</code> em <code>/usr/share/dict/words</code> e salve em <code>/root/lines</code>" },
+        10: { t: "10. Usuário com UID", n: 1, d: "Crie usuário <code>alex</code> com UID 2345 e senha <code>Compedel@124</code>" },
+        11: { t: "11. Backup Tar", n: 1, d: "Faça backup de <code>/usr/local</code> como <code>/root/backup.tar.gz</code> (usando gzip)" },
+        12: { t: "12. Umask do John", n: 1, d: "Configure para usuário john:<br><br>• Novos arquivos: permissão <code>-r--------</code><br>• Novos diretórios: permissão <code>dr-x--------</code>" },
+        13: { t: "13. Systemd Timer", n: 1, d: "Crie script <code>/usr/local/bin/log_capture</code> que lista arquivos em /tmp e salva em <code>/root/log_output/system_logs.trc</code>. Crie serviço e timer para executar a cada 1 minuto." },
+        
+        // Node 2 (14-20)
+        14: { t: "14. Reset Senha Root", n: 2, d: "No node2, redefina a senha root para <code>compedel@777</code> via modo rescue (interrupção do GRUB)." },
+        15: { t: "15. Repositórios Node2", n: 2, d: "Configure os mesmos repositórios da questão 2 no node2." },
+        16: { t: "16. Partição Swap", n: 2, d: "Adicione partição swap de 756MiB em <code>/dev/sdb</code> e ative na inicialização." },
+        17: { t: "17. Redimensionar LV", n: 2, d: "Redimensione o LV <code>VO</code> no VG <code>VG</code> para exatamente 230MiB." },
+        18: { t: "18. Flatpak", n: 2, d: "Configure Flatpak para usuário <code>student</code>:<br><br>• Repositório: <code>flatdb</code> de <code>https://flathub.org/repo/flathub.flatpakrepo</code><br>• Instale o aplicativo <code>codium</code>" },
+        19: { t: "19. LVM Avançado", n: 2, d: "Crie LV <code>qa</code> no VG <code>qagroup</code>:<br><br>• Tamanho: 60 extensões de 16MiB cada<br>• Disco: <code>/dev/sdc</code><br>• Formato: ext4<br>• Montagem: <code>/mnt/qa</code> (permanente)" },
+        20: { t: "20. Tuned", n: 2, d: "Configure o perfil <code>tuned</code> recomendado para o sistema." }
     };
 
+    // Renderizar lista de tarefas
     const taskList = document.getElementById('task-list');
     Object.keys(tasks).forEach(id => {
         let div = document.createElement('div');
-        div.className = 'task-item';
-        div.innerText = tasks[id].t;
+        div.className = `task-item node${tasks[id].n}`;
+        div.innerHTML = `${tasks[id].t} <span class="node-badge node${tasks[id].n}-badge">Node ${tasks[id].n}</span>`;
         div.onclick = () => loadTask(id);
         taskList.appendChild(div);
     });
 
     function loadTask(id) {
         currentTaskId = id;
-        document.getElementById('task-title').innerText = tasks[id].t;
-        document.getElementById('task-desc').innerHTML = tasks[id].d;
+        const task = tasks[id];
+        
+        document.getElementById('task-title').innerText = task.t;
+        document.getElementById('task-desc').innerHTML = task.d;
+        document.getElementById('task-node').innerText = `Node ${task.n}`;
+        document.getElementById('task-details').style.display = 'block';
         document.getElementById('btn-verify').style.display = "block";
         document.getElementById('btn-hint').style.display = "block";
-        document.getElementById('status').style.display = "none";
+        
+        let statusDiv = document.getElementById('status');
+        statusDiv.style.display = "none";
+        
+        // Mostrar status anterior se já completado
+        if (completedTasks.has(parseInt(id))) {
+            statusDiv.style.display = "block";
+            statusDiv.style.background = "#27ae60";
+            statusDiv.innerHTML = "✅ <b>Tarefa já concluída anteriormente!</b>";
+        }
     }
 
     async function getAiHint() {
@@ -80,11 +139,10 @@
             const response = await fetch(`http://localhost:5005/hint/${currentTaskId}`);
             const data = await response.json();
             statusDiv.style.background = "#2980b9";
-            // Adicionado replace para formatar quebras de linha da IA
-            statusDiv.innerHTML = `<b>Dica:</b><br>${data.hint.replace(/\n/g, '<br>')}`;
+            statusDiv.innerHTML = `<b>💡 Dica:</b><br>${data.hint.replace(/\n/g, '<br>')}`;
         } catch (error) {
-            statusDiv.style.background = "#f39c12";
-            statusDiv.innerHTML = "⚠️ Erro: Servidor de IA (Python) offline.";
+            statusDiv.style.background = "#e67e22";
+            statusDiv.innerHTML = "⚠️ Servidor de dicas offline. Use as anotações do curso.";
         }
     }
 
@@ -92,7 +150,7 @@
         const statusDiv = document.getElementById('status');
         statusDiv.style.display = "block";
         statusDiv.style.background = "#34495e";
-        statusDiv.innerHTML = "⏳ Verificando no node1...";
+        statusDiv.innerHTML = "⏳ Verificando...";
 
         try {
             const response = await fetch(`http://localhost:5005/check/${currentTaskId}`);
@@ -100,16 +158,30 @@
             
             if (data.success) {
                 statusDiv.style.background = "#27ae60";
-                statusDiv.innerHTML = "✅ <b>Correto!</b> Lab concluído com sucesso.";
+                statusDiv.innerHTML = "✅ <b>Correto!</b> Parabéns!";
+                
+                // Marcar como completo
+                completedTasks.add(parseInt(currentTaskId));
+                localStorage.setItem('completedTasks', JSON.stringify([...completedTasks]));
+                updateProgress();
             } else {
                 statusDiv.style.background = "#c0392b";
-                statusDiv.innerHTML = `❌ <b>Errado:</b> Verifique sua configuração no node1.`;
+                statusDiv.innerHTML = "❌ <b>Incorreto.</b> Verifique sua configuração e tente novamente.";
             }
         } catch (error) {
-            statusDiv.style.background = "#f39c12";
-            statusDiv.innerHTML = "⚠️ <b>Erro:</b> O servidor Python (app.py) não responde na porta 5005.";
+            statusDiv.style.background = "#e67e22";
+            statusDiv.innerHTML = "⚠️ Servidor de verificação offline. Execute 'python3 app.py' no terminal.";
         }
     }
+
+    function updateProgress() {
+        const progress = (completedTasks.size / 20) * 100;
+        document.getElementById('progress-fill').style.width = progress + '%';
+        document.getElementById('progress-text').innerText = `${completedTasks.size}/20`;
+    }
+
+    // Inicializar progresso
+    updateProgress();
 </script>
 
 </body>
